@@ -56,7 +56,7 @@ curl http://127.0.0.1:8000/v1/systemone \
 
 `GET /health` returns `{"status": "ok"}` once the weights are loaded.
 
-The same request also runs through [llama-server](#llama-server).
+The same request also runs through [llama-server](#llama-server) and [Ollama](#ollama).
 
 ## A request
 
@@ -149,6 +149,7 @@ A local bfloat16 run of `examples/request.json` returns:
 | --- | --- | --- |
 | Python | this directory, including `head.pt` | `POST /v1/systemone` on port 8000 |
 | llama-server | `drex-dlm.gguf` | `POST /v1/systemone` on port 8097 |
+| Ollama | the same GGUF | `POST /v1/systemone` on port 11434 |
 
 ### Python
 
@@ -205,6 +206,18 @@ curl http://127.0.0.1:8097/v1/systemone \
 ```
 
 The response uses the same `answers` fields as Python, plus `latency_ms` and an `x-typesafe-request-id` header. One forward pass covers up to 16,384 tokens. A longer request is scored one question at a time. The state stays within 8,192 tokens, and each question plus the state stays within 8,192. If the server was started with a smaller `-c`, `-b`, or `-ub` than the batch it is asked to score, the request is rejected instead of split. F16 is the converted type used with this server.
+
+### Ollama
+
+[nace-ai/ollama](https://github.com/nace-ai/ollama) branch `nace-edlm` launches that same `llama-server` and forwards `POST /v1/systemone`. Build the server from [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp) branch `edlm` before configuring Ollama:
+
+```bash
+export OLLAMA_LLAMA_CPP_SOURCE=/path/to/llama.cpp
+cmake -S llama/server --preset darwin
+cmake --build build/llama-server-darwin --target llama-server --parallel 8
+```
+
+Apple Silicon uses `darwin`. NVIDIA Linux uses `llama_cuda_v12_linux` and `build/llama-server-cuda_v12`. CPU uses `cpu` and `build/llama-server-cpu`. Set the source variable before `cmake -S`. Then create the model from `drex-dlm.gguf` and post the same JSON to `http://127.0.0.1:11434/v1/systemone`.
 
 ## Limits
 
