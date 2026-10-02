@@ -14,13 +14,7 @@ We introduce Drex DLM from [Nace.AI](https://www.nace.ai/), a decision model tha
 
 The backbone is [NVIDIA Efficient-DLM-8B](https://huggingface.co/nvidia/Efficient-DLM-8B), with a decision adapter merged into the weights. The block tensor names match Qwen3. Attention is the diffusion encoder: the document is bidirectional, and each question is its own causal branch, so one question's options stay invisible to the next question. The pointer head reads the hidden state at the decision marker and at each option marker, then turns those two vectors into a score.
 
-```
-document  ->  bidirectional state
-question  ->  causal branch, isolated from every other question
-<option>  ->  key
-<decide>  ->  query
-score     ->  key · query
-```
+![Drex DLM architecture: bidirectional shared context feeds isolated causal question branches. A shared pointer head projects decision and option hidden states into queries and keys, then converts scaled dot-product scores into option probabilities.](assets/drex-dlm-architecture.png)
 
 Weights: [nace-ai/drex-dlm](https://huggingface.co/nace-ai/drex-dlm)
 
