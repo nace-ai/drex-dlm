@@ -12,9 +12,13 @@ pipeline_tag: text-classification
 
 We introduce Drex DLM from [Nace.AI](https://www.nace.ai/), a decision model that answers typed questions about a given context. Pass that context as `state`, provide one or more named questions, and get a probability for every option. One forward pass of an 8B diffusion language model plus a pointer head produces that distribution.
 
-The backbone is [NVIDIA Efficient-DLM-8B](https://huggingface.co/nvidia/Efficient-DLM-8B), with a decision adapter merged into the weights. The block tensor names match Qwen3. Attention is the diffusion encoder: the document is bidirectional, and each question is its own causal branch, so one question's options stay invisible to the next question. The pointer head reads the hidden state at the decision marker and at each option marker, then turns those two vectors into a score.
+The backbone is [NVIDIA Efficient-DLM-8B](https://huggingface.co/nvidia/Efficient-DLM-8B), a diffusion language model with a decision adapter merged into its weights. The block tensor names match Qwen3. The shared context (`state`) uses bidirectional attention. Each question branch attends to that context and uses causal attention within the branch; state tokens cannot attend to questions, and question branches cannot attend to one another.
 
-![Drex DLM architecture: bidirectional shared context feeds isolated causal question branches. A shared pointer head projects decision and option hidden states into queries and keys, then converts scaled dot-product scores into option probabilities.](assets/drex-dlm-architecture.png)
+A shared pointer head projects the final-layer hidden state at the decision marker into a query and the final-layer hidden state at each option-ending marker into a key. Scaled dot products, temperature scaling, and a softmax over each question's options produce the probabilities.
+
+![Drex DLM architecture: an Efficient-DLM-8B diffusion backbone uses full attention within shared state, causal attention within each question branch, and no attention between questions. Decision and option-ending hidden states feed a separate shared pointer head, followed by a softmax over each question's options.](assets/drex-dlm-architecture.png)
+
+The diagram uses `<decide>` and `</opt>` as readable aliases for the decision and option-ending markers. Packed requests within the token budget use one forward pass; larger requests are split across question rows.
 
 Weights: [nace-ai/drex-dlm](https://huggingface.co/nace-ai/drex-dlm)
 
