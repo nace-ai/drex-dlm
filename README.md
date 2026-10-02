@@ -57,7 +57,7 @@ pip install -r requirements.txt
 python inference.py --request examples/request.json
 ```
 
-That prints the answers for the sample ticket. To keep the process up:
+That prints the answers for the sample ticket. To start the inference server:
 
 ```bash
 python serve.py --port 8000
