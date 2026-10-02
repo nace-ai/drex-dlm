@@ -16,7 +16,7 @@ The backbone is [NVIDIA Efficient-DLM-8B](https://huggingface.co/nvidia/Efficien
 
 A shared pointer head projects the final-layer hidden state at the decision marker into a query and the final-layer hidden state at each option-ending marker into a key. Scaled dot products, temperature scaling, and a softmax over each question's options produce the probabilities.
 
-![Drex DLM architecture: an Efficient-DLM-8B diffusion backbone uses full attention within shared state, causal attention within each question branch, and no attention between questions. Decision and option-ending hidden states feed a separate shared pointer head, followed by a softmax over each question's options.](assets/drex-dlm-architecture.png)
+![Drex DLM architecture: packed context and questions pass through the Efficient-DLM-8B diffusion backbone. Final hidden states are grouped by question. A shared pointer readout projects option-ending states into keys and decision states into queries, then scores and normalizes each question's options into probabilities.](assets/drex-dlm-architecture.png)
 
 The diagram uses `<decide>` and `</opt>` as readable aliases for the decision and option-ending markers. Packed requests within the token budget use one forward pass; larger requests are split across question rows.
 
