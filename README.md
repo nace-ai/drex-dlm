@@ -22,6 +22,8 @@ Code: [nace-ai/drex-dlm](https://github.com/nace-ai/drex-dlm)
 
 Server: [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp), branch `edlm`
 
+Context length is 32,768 tokens. The recommended default is 16,384. [Context length](#context-length) shows how to use the full window.
+
 Python 3.12 is the tested interpreter. The first load is about 16 GB of bfloat16 weights. A 24 GB GPU is a comfortable fit. CPU runs it too, more slowly.
 
 ## Decision Index 0.2
@@ -171,7 +173,7 @@ python serve.py --host 127.0.0.1 --port 8000
 
 The server loads the safetensors shards and `head.pt` from this directory. `--model` points at another checkout of the same files. `--name` sets the `model` field in the response.
 
-A state longer than 8,192 tokens comes back as an error, so the score always covers the whole document. One question, including the state, also fits in 8,192 tokens. Several questions share one forward pass up to 16,384 tokens. Past that, Python scores one question at a time. The probabilities are the same either way.
+The recommended context is 16,384 tokens. A state longer than the selected context comes back as an error, so the score always covers the whole document. One question, including the state, fits in that same limit. Several questions share one forward pass up to that limit. Past that, Python scores one question at a time. The probabilities are the same either way.
 
 ### llama-server
 
@@ -199,7 +201,7 @@ python convert_hf_to_gguf.py /path/to/drex-dlm \
   --outtype f16
 ```
 
-Start the server with a 16,384-token batch. One request is encoded in a single batch.
+Start the server at the recommended 16,384-token context. One request is encoded in a single batch.
 
 ```bash
 ./build/bin/llama-server \
@@ -216,7 +218,7 @@ curl http://127.0.0.1:8097/v1/systemone \
   -d @examples/request.json
 ```
 
-The response uses the same `answers` fields as Python, plus `latency_ms` and an `x-typesafe-request-id` header. One forward pass covers up to 16,384 tokens. A longer request is scored one question at a time. The state stays within 8,192 tokens, and each question plus the state stays within 8,192. If the server was started with a smaller `-c`, `-b`, or `-ub` than the batch it is asked to score, the request is rejected instead of split. F16 is the converted type used with this server.
+The response uses the same `answers` fields as Python, plus `latency_ms` and an `x-typesafe-request-id` header. One forward pass covers the selected context. A longer request is scored one question at a time. If the server was started with a smaller `-c`, `-b`, or `-ub` than the batch it is asked to score, the request is rejected instead of split. F16 is the converted type used with this server.
 
 ### Ollama
 
@@ -228,16 +230,40 @@ cmake -S llama/server --preset darwin
 cmake --build build/llama-server-darwin --target llama-server --parallel 8
 ```
 
-Apple Silicon uses `darwin`. NVIDIA Linux uses `llama_cuda_v12_linux` and `build/llama-server-cuda_v12`. CPU uses `cpu` and `build/llama-server-cpu`. Set the source variable before `cmake -S`. Then create the model from `drex-dlm.gguf` and post the same JSON to `http://127.0.0.1:11434/v1/systemone`.
+Apple Silicon uses `darwin`. NVIDIA Linux uses `llama_cuda_v12_linux` and `build/llama-server-cuda_v12`. CPU uses `cpu` and `build/llama-server-cpu`. Set the source variable before `cmake -S`. Then create the model from `drex-dlm.gguf` and post the same JSON to `http://127.0.0.1:11434/v1/systemone`. `PARAMETER num_ctx 16384` in `Modelfile` is the recommended context.
 
-## Limits
+## Context length
+
+The context length is 32,768 tokens. That is the position window in the weights. The recommended default is 16,384. A state, and one question including the state, must fit in the selected context. Several questions share one forward up to that same limit. Past that, the server scores one question at a time.
 
 | | Tokens |
 | --- | --- |
-| State | 8,192 |
-| One question, including the state | 8,192 |
-| One packed forward | 16,384 |
+| Context length | 32,768 |
+| Recommended default | 16,384 |
 | Options in one question | 255 |
+
+A value above 32,768 is ignored, and the recommended 16,384 stays in force.
+
+Python already uses the recommended default. For the full window:
+
+```bash
+KEV_CONTEXT=32768 python serve.py --port 8000
+```
+
+llama-server needs the encode cap and the slot to move together. Rebuild `llama-server` from the `edlm` branch after pulling this change:
+
+```bash
+SYSTEMONE_CONTEXT=32768 ./build/bin/llama-server \
+  -m /path/to/drex-dlm/drex-dlm.gguf \
+  --host 127.0.0.1 --port 8097 \
+  --embedding --pooling none \
+  -c 32768 -b 32768 -ub 32768 -np 1 \
+  --no-warmup
+```
+
+Ollama: set `PARAMETER num_ctx 32768` in `Modelfile`, run `ollama create` again, and start Ollama with `SYSTEMONE_CONTEXT=32768`. `num_ctx` sizes the slot. The environment variable raises the encode cap.
+
+`KEV_SERVE_MAX_STATE`, `KEV_SERVE_MAX_BRANCH`, and `KEV_SERVE_MAX_PACKED` override one Python cap. `SYSTEMONE_MAX_STATE`, `SYSTEMONE_MAX_BRANCH`, and `SYSTEMONE_MAX_PACKED` do the same for llama-server. You do not need them to select the full window.
 
 A question may be `choice`, `noul`, or `score`. Option text is the option name plus its description. A `<|name|>` span in user text is rewritten to `<¦name¦>` before tokenization, which keeps the document separate from the five delimiter tokens.
 

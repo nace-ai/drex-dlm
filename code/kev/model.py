@@ -12,13 +12,32 @@ SPECIAL = ["<|fim_prefix|>", "<|fim_middle|>", "<|box_start|>", "<|box_end|>", "
 # training context: state tokens, tokens per question branch, and the whole packed record. Frozen suites are admitted with
 # this rule (kev.suite) and training applies it to records built on the fly, so train and eval see the same population.
 MAX_STATE, MAX_BRANCH, MAX_PACKED = 384, 1024, 2048
-# serving context (kev.serve): per-branch cap mirrors Jev's ~32k, bounded by the base model window; longer than training, so untested there
-SERVE_MAX_STATE = int(os.environ.get("KEV_SERVE_MAX_STATE", "8192"))
-SERVE_MAX_BRANCH = int(os.environ.get("KEV_SERVE_MAX_BRANCH", "8192"))
-SERVE_MAX_PACKED = SERVE_MAX_STATE + SERVE_MAX_BRANCH   # one row at most: a packed request longer than this runs in the row form (the block-causal mask is L x L)
-# the longest state a checkpoint may be trained on (kev.train --max_state) and still leave every question its training
-# branch budget when served: serving's row limit is SERVE_MAX_BRANCH = state + branch
-MAX_TRAIN_STATE = SERVE_MAX_BRANCH - (MAX_BRANCH - MAX_STATE)
+# Position window of the weights. Serving recommends 16,384 and can be raised to this.
+CONTEXT_LENGTH = 32768
+RECOMMENDED_CONTEXT = 16384
+
+
+def _serve_limit(name, default):
+    """A serving cap from the environment. Missing or invalid keeps `default`. Never above the position window."""
+    raw = os.environ.get(name)
+    if raw is None or raw == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    if value < 1 or value > CONTEXT_LENGTH:
+        return default
+    return value
+
+
+# KEV_CONTEXT selects the window. KEV_SERVE_MAX_STATE, KEV_SERVE_MAX_BRANCH, and KEV_SERVE_MAX_PACKED override one cap.
+_context = _serve_limit("KEV_CONTEXT", RECOMMENDED_CONTEXT)
+SERVE_MAX_STATE = _serve_limit("KEV_SERVE_MAX_STATE", _context)
+SERVE_MAX_BRANCH = _serve_limit("KEV_SERVE_MAX_BRANCH", _context)
+SERVE_MAX_PACKED = _serve_limit("KEV_SERVE_MAX_PACKED", _context)
+# Training admission stays on the historical 8,192-token row, so a wider serving window does not widen training.
+MAX_TRAIN_STATE = 8192 - (MAX_BRANCH - MAX_STATE)
 
 
 def training_context(max_state=MAX_STATE):
