@@ -30,6 +30,19 @@ Server: [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp), branch `edlm`
 
 Python 3.12 is the tested interpreter. The first load is about 16 GB of bfloat16 weights. A 24 GB GPU is a comfortable fit. CPU runs it too, more slowly.
 
+## Decision Index 0.2
+
+| Model | Index | Knowledge & Reasoning | Language Understanding | Retrieval & Classification | Tools & Automation | Arts & Human Taste |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Drex DLM | 52.31 | 50.71 | 57.77 | 54.25 | 48.59 | 50.25 |
+| Decider chat · Gemma-4-31B | 51.93 | 44.54 | 58.91 | 50.34 | 66.99 | 38.89 |
+| Jev | 51.67 | 50.54 | 59.74 | 43.35 | 66.86 | 37.86 |
+| AutoJev-27B | 50.94 | 40.93 | 61.90 | 42.00 | 69.98 | 39.88 |
+| Jebadiah 27B | 50.32 | 38.82 | 58.97 | 45.48 | 69.30 | 39.02 |
+| simple-jev · Qwen3.8-27B | 50.21 | 36.61 | 60.16 | 50.22 | 66.95 | 37.10 |
+
+The other five are the top of the [Decision Index 0.2](https://huggingface.co/spaces/multimodalart/jev-decision-index) board.
+
 ## Quick start
 
 ```bash
@@ -142,6 +155,8 @@ A local bfloat16 run of `examples/request.json` returns:
 ```
 
 `usage.input_tokens` is the encoded document plus questions. For this ticket that is 87. `usage.output_tokens` counts the serialized answers, not generated text. `latency_ms` is the scoring time.
+
+Several decisions can share one forward. Send `requests`, a list of objects with `state` and `questions`. The response is `results` in that order. Each result has its own `answers`, `usage`, and `latency_ms`. That `latency_ms` is the shared forward, not a separate score for the item. One object, as above, stays one decision. A list cannot also contain `state` or `questions`.
 
 ## Serving
 
