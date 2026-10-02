@@ -10,7 +10,7 @@ pipeline_tag: text-classification
 
 # Drex DLM
 
-Drex DLM reads a document and answers typed questions about it. Send the document as `state`, send one or more named questions with it, and get a probability for every option. One forward pass of an 8B diffusion language model plus a pointer head produces that distribution.
+We introduce Drex DLM from [Nace.AI](https://www.nace.ai/), a model that reads a document and answers typed questions about it. Send the document as `state`, send one or more named questions with it, and get a probability for every option. One forward pass of an 8B diffusion language model plus a pointer head produces that distribution.
 
 The backbone is [NVIDIA Efficient-DLM-8B](https://huggingface.co/nvidia/Efficient-DLM-8B), with a decision adapter merged into the weights. The block tensor names match Qwen3. Attention is the diffusion encoder: the document is bidirectional, and each question is its own causal branch, so one question's options stay invisible to the next question. The pointer head reads the hidden state at the decision marker and at each option marker, then turns those two vectors into a score.
 
@@ -31,6 +31,8 @@ Server: [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp), branch `edlm`
 Python 3.12 is the tested interpreter. The first load is about 16 GB of bfloat16 weights. A 24 GB GPU is a comfortable fit. CPU runs it too, more slowly.
 
 ## Decision Index 0.2
+
+Scores reported as of October 2026.
 
 | Model | Index | Knowledge & Reasoning | Language Understanding | Retrieval & Classification | Tools & Automation | Arts & Human Taste |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
