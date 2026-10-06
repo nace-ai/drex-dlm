@@ -285,4 +285,4 @@ An October 2026 Apple M5 Max smoke suite of 26 requests and 53 questions (50 ind
 
 ## License
 
-The checkpoint and converted GGUF weights are [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/), not MIT; commercial use of the weights is not licensed by this release. Original Nace.AI source code is [MIT](LICENSE). See [MODEL_LICENSE.md](MODEL_LICENSE.md) for attribution and provenance.
+The model weights are released under CC BY-NC 4.0. The original code written by Nace.AI in this repository is under the MIT License.
