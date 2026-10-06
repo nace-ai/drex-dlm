@@ -285,6 +285,4 @@ An October 2026 Apple M5 Max smoke suite of 26 requests and 53 questions (50 ind
 
 ## License
 
-The **model weights are released under CC BY-NC 4.0**, not MIT. They derive from [NVIDIA Efficient-DLM-8B](https://huggingface.co/nvidia/Efficient-DLM-8B), whose published [model card](https://huggingface.co/nvidia/Efficient-DLM-8B/raw/main/README.md) specifies CC BY-NC 4.0. The backbone was further trained/merged with a decision adapter and paired with a pointer head; these are modifications of the upstream model. Attribute both the original authors and Nace.AI, link the [CC BY-NC 4.0 license](https://creativecommons.org/licenses/by-nc/4.0/), and indicate the modifications when redistributing. **Commercial use of the weights is not licensed by this release.**
-
-The original code written by Nace.AI in this repository is under the [MIT License](LICENSE). Third-party dependencies and inherited model code retain their respective licenses. This separation does not relicense the upstream weights or code under MIT; review upstream notices before redistribution.
+The checkpoint and converted GGUF weights are [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/), not MIT; commercial use of the weights is not licensed by this release. Original Nace.AI source code is [MIT](LICENSE). See [MODEL_LICENSE.md](MODEL_LICENSE.md) for attribution and provenance.
