@@ -32,6 +32,10 @@ The model supports a maximum context window of **32,768 tokens**, but the local 
 
 Python 3.12 is the validated interpreter. Local inference was tested on an Apple M5 Max with 128 GiB of unified memory; CUDA and CPU-only inference have not yet been validated. BF16 weights occupy about 16 GB, but actual memory use grows with context length and batching. Long-context quality is experimental.
 
+## Agentic harnesses
+
+Integrate Drex DLM into coding agents and other agentic harnesses with the [Drex agent skill](https://github.com/nace-ai/drex-agent-skill). Its [self-hosted instructions](https://github.com/nace-ai/drex-agent-skill#self-hosted-drex) show how to point your agent at this model's local `/v1/systemone` server (see [Serving](#serving)); no hosted API key is needed.
+
 ## Decision Index 0.2
 
 Scores reported as of October 2026.
