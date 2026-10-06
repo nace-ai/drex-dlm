@@ -30,7 +30,7 @@ Server: [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp), branch `edlm`
 
 The model supports a maximum context window of **32,768 tokens**, but the local Python, llama-server, and Ollama runners use **16,384 tokens by default**. The 32K window is not enabled automatically; [Context length](#context-length) explains how to configure it for each runner.
 
-Python 3.12 is the validated interpreter. Local inference was tested on an Apple M5 Max with 128 GiB of unified memory; CUDA and CPU-only inference have not yet been validated. BF16 weights occupy about 16 GB, but actual memory use grows with context length and batching. Long-context quality is experimental.
+Python 3.12 is the validated interpreter. Local inference was tested on an Apple M5 Max with 128 GiB of unified memory; CUDA and CPU-only inference have not yet been validated. BF16 weights occupy about 16 GB, but actual memory use grows with context length and batching.
 
 ## Agentic harnesses
 
