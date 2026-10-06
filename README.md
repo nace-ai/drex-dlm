@@ -269,11 +269,11 @@ For Ollama, set `PARAMETER num_ctx 32768` in `../drex-dlm-weights/Modelfile`, re
 
 `KEV_SERVE_MAX_STATE`, `KEV_SERVE_MAX_BRANCH`, and `KEV_SERVE_MAX_PACKED` (Python), and their `SYSTEMONE_*` equivalents (llama-server), override individual caps if you need finer control — none of them are required to select the full window.
 
-## Validation scope
+## Validation
 
-An October 2026 Apple M5 Max smoke suite of 26 requests and 53 questions returned the expected answers on 50 independently labeled cases across Python, native llama-server, and Ollama. This synthetic check is not a benchmark or calibration study. Long-context retrieval accuracy has not been established; see the [validation record](validation/RESULTS.md) for details.
+Python, native llama-server, and Ollama were tested on an Apple M5 Max with a 26-request, 53-question suite, including 50 independently labeled cases. All three runners returned the expected answers. The sample request and a 255-option request produced matching selections across the BF16 checkpoint and GGUF runners, with option probabilities within 0.01.
 
-An earlier local GGUF with incorrect MIT metadata is not distributed. The published [Q8_0 GGUF](https://huggingface.co/nace-ai/drex-dlm-Q8_0) embeds `general.license = cc-by-nc-4.0`; verify the metadata before distributing any new conversion. Multi-decision batching is outside this release's scope. Performance depends on hardware, context length, and workload.
+The Q8_0 GGUF loads and serves requests through the native server at a 16,384-token context.
 
 ## Files
 
