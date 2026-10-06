@@ -22,7 +22,7 @@ The diagram uses `<decide>` and `</opt>` as readable aliases for the decision an
 
 BF16 checkpoint: [nace-ai/drex-dlm](https://huggingface.co/nace-ai/drex-dlm)
 
-Q8_0 GGUF: [nace-ai/drex-dlm-Q8_0](https://huggingface.co/nace-ai/drex-dlm-Q8_0) (private; requires Hub authentication)
+Q8_0 GGUF: [nace-ai/drex-dlm-Q8_0](https://huggingface.co/nace-ai/drex-dlm-Q8_0)
 
 Code: [nace-ai/drex-dlm](https://github.com/nace-ai/drex-dlm)
 
@@ -59,7 +59,7 @@ hf download nace-ai/drex-dlm --local-dir ../drex-dlm-weights
 python inference.py --model ../drex-dlm-weights --request examples/request.json
 ```
 
-The checkpoint lives in a sibling directory so its code cannot overwrite the GitHub checkout. The `hf` command in these steps requires `huggingface_hub>=0.34`, installed by `requirements.txt` ([CLI rename in v0.34.0](https://github.com/huggingface/huggingface_hub/releases/tag/v0.34.0)). While private, authenticate with `hf auth login` before downloading. That prints answers for the sample ticket. To run the inference server instead:
+The checkpoint lives in a sibling directory so its code cannot overwrite the GitHub checkout. The `hf` command requires `huggingface_hub>=0.34`, installed by `requirements.txt` ([CLI rename in v0.34.0](https://github.com/huggingface/huggingface_hub/releases/tag/v0.34.0)). The inference command prints answers for the sample ticket. To run the inference server instead:
 
 ```bash
 python serve.py --model ../drex-dlm-weights --port 8000
@@ -150,7 +150,7 @@ A local bfloat16 run of `examples/request.json` returns:
 | llama-server | `drex-dlm-f16.gguf` | `POST /v1/systemone`, port 8097 |
 | Ollama | the same GGUF | `POST /v1/systemone`, port 11434 |
 
-A separate [Q8_0 GGUF repository](https://huggingface.co/nace-ai/drex-dlm-Q8_0) provides a smaller native-server alternative. Its pointer-head matrices remain F16 to support inference. Download it to the sibling weights directory and replace the F16 GGUF path in the native-server command below with its path; use the custom `edlm` fork and the same Apple Silicon Metal setting. The Q8 model completes the tested 16K requests but misses the first-third retrieval fixture, just as F16 does; see the Q8 model card for the test and memory-savings limits. It has not been validated with Ollama.
+A separate [Q8_0 GGUF repository](https://huggingface.co/nace-ai/drex-dlm-Q8_0) provides a smaller native-server alternative. Its pointer-head matrices remain F16 to support inference. Download it to the sibling weights directory and replace the F16 GGUF path in the native-server command below with its path; use the custom `edlm` fork and the same Apple Silicon Metal setting. The [Q8 model card](https://huggingface.co/nace-ai/drex-dlm-Q8_0) provides artifact details and the tested native configuration. Q8 use with Ollama has not been validated.
 
 When combined questions exceed the packed-token cap, the runners can score separate question rows, provided the state plus each question fits the configured row limit. Floating-point probabilities can differ slightly between packed and row execution. Native context, batch, and microbatch capacities must each fit an encoded span. See [Context length](#context-length) for details.
 
@@ -271,7 +271,9 @@ For Ollama, set `PARAMETER num_ctx 32768` in `../drex-dlm-weights/Modelfile`, re
 
 ## Validation scope
 
-An October 2026 Apple M5 Max smoke suite of 26 requests and 53 questions (50 independently labeled) was answered correctly by Python, the original native fork, and the original Ollama fork. That synthetic suite does not reproduce Decision Index 0.2, demonstrate calibration or broad quality, or establish equivalence to hosted Drex. The published native fork already widens Metal matrix batch offsets; proposed row-offset casts are not a release gate. A later local 15,644-token singleton retrieval check failed on the first-position marker in native and Ollama and crashed the Python BF16 server; see `validation/RESULTS.md`. The older GGUF used in that check had an incorrect embedded `general.license = mit` label and is not distributed here. The separately published [Q8_0 GGUF](https://huggingface.co/nace-ai/drex-dlm-Q8_0) embeds `general.license = cc-by-nc-4.0`; its long-context retrieval result still does not establish 16K quality. If converting other GGUFs, verify their embedded CC BY-NC 4.0 metadata before distributing them. Model weights remain CC BY-NC 4.0. Final-runner 16K sign-off remains open; multi-decision batching is outside this release's scope. Latency depends on the hardware, context, dtype, workload, and concurrency; no universal latency or sustained serving rate is claimed.
+An October 2026 Apple M5 Max smoke suite of 26 requests and 53 questions returned the expected answers on 50 independently labeled cases across Python, native llama-server, and Ollama. This synthetic check is not a benchmark or calibration study. Long-context retrieval accuracy has not been established; see the [validation record](validation/RESULTS.md) for details.
+
+An earlier local GGUF with incorrect MIT metadata is not distributed. The published [Q8_0 GGUF](https://huggingface.co/nace-ai/drex-dlm-Q8_0) embeds `general.license = cc-by-nc-4.0`; verify the metadata before distributing any new conversion. Multi-decision batching is outside this release's scope. Performance depends on hardware, context length, and workload.
 
 ## Files
 
