@@ -1,0 +1,7 @@
+# Model weights: CC BY-NC 4.0
+
+The Drex DLM checkpoint weights and converted GGUF are made available under [Creative Commons Attribution-NonCommercial 4.0 International](https://creativecommons.org/licenses/by-nc/4.0/legalcode). This is **not** an MIT license for the weights, and this release does not grant commercial-use rights to them.
+
+Drex DLM is derived from [NVIDIA Efficient-DLM-8B](https://huggingface.co/nvidia/Efficient-DLM-8B), whose [published model card](https://huggingface.co/nvidia/Efficient-DLM-8B/raw/main/README.md) identifies the upstream license as CC BY-NC 4.0. The original Efficient-DLM paper is [Fu et al., *Efficient-DLM: From Autoregressive to Diffusion Language Models, and Beyond in Speed*](https://arxiv.org/abs/2512.14067). Nace.AI further trained/merged a decision adapter into the backbone and added the decision pointer head. Those are modifications of the upstream model, not an independent reimplementation of its weights.
+
+When redistributing the model, retain the upstream and Drex attributions, links to the source and license, and an indication of modifications as required by CC BY-NC 4.0. The MIT `LICENSE` in the code repository, also present alongside the weights in the model repository, covers original Nace.AI source code only; it does not override the model weight license or third-party code licenses. If you have a separate commercial permission from upstream, its scope must be checked independently; none is asserted here.

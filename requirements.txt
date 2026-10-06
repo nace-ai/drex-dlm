@@ -1,4 +1,4 @@
 torch>=2.6,<2.9
 transformers>=5.17,<6
 pydantic>=2
-huggingface_hub>=0.30
+huggingface_hub>=0.34

@@ -7,13 +7,20 @@ or ``score`` questions. This process scores the pointer head in this directory.
 """
 import argparse
 import json
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from inference import decide, load
 
 
+def reject_nonfinite_json(value):
+    raise ValueError(f"non-finite JSON number: {value}")
+
+
 def make_handler(tok, model, model_name):
+    lock = threading.Lock()
+
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
 
@@ -25,6 +32,8 @@ def make_handler(tok, model, model_name):
             self.send_response(status)
             self.send_header("Content-Type", "application/json")
             self.send_header("Content-Length", str(len(body)))
+            if self.close_connection:
+                self.send_header("Connection", "close")
             self.end_headers()
             self.wfile.write(body)
 
@@ -38,15 +47,30 @@ def make_handler(tok, model, model_name):
             if self.path.rstrip("/") != "/v1/systemone":
                 self._send(404, {"error": "not found"})
                 return
-            length = int(self.headers.get("Content-Length", "0"))
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                self.close_connection = True
+                self._send(400, {"error": "Content-Length must be an integer"})
+                return
             if length <= 0 or length > 1_000_000:
+                self.close_connection = True
                 self._send(400, {"error": "request body must be between 1 byte and 1 MB"})
                 return
             try:
-                request = json.loads(self.rfile.read(length))
-                result = decide(tok, model, request)
-            except Exception as exc:
+                request = json.loads(self.rfile.read(length), parse_constant=reject_nonfinite_json)
+                if not isinstance(request, dict):
+                    raise ValueError("request must be an object")
+                if "model" in request and not isinstance(request["model"], str):
+                    raise ValueError("model must be a string")
+                with lock:
+                    result = decide(tok, model, request)
+            except ValueError as exc:
                 self._send(400, {"error": str(exc)})
+                return
+            except Exception as exc:
+                self.log_error("System One scoring failed: %r", exc)
+                self._send(500, {"error": "internal scoring error"})
                 return
             self._send(200, {"model": request.get("model") or model_name, **result})
 

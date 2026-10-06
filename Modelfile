@@ -1,0 +1,6 @@
+# Model weights: CC BY-NC 4.0, not MIT. See MODEL_LICENSE.md.
+# Model maximum: 32768 tokens; this local runner defaults to 16384 tokens.
+# For 32768, set num_ctx to 32768 and start Ollama with SYSTEMONE_CONTEXT=32768.
+FROM ./drex-dlm-f16.gguf
+CAPABILITY decision
+PARAMETER num_ctx 16384

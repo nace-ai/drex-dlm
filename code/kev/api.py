@@ -42,7 +42,7 @@ Question = Union[Noul, Choice, Score]
 
 class SystemOneRequest(BaseModel):
     state: JSONContent
-    model: str = "kev-latest"
+    model: str = "drex-dlm"
     questions: dict[str, Question] = Field(min_length=1)
 
 
@@ -112,7 +112,7 @@ def to_record(req: SystemOneRequest):
             opts = [option_text(k, v) for k, v in q.criteria.items()]
         else:
             opts = [render(x) for x in q.criteria]
-            m["legend"] = dict(zip(m["keys"], opts))
+            m["legend"] = opts
         qs.append({"instr": render(q.instructions), "options": opts, "label": 0}); meta.append(m)
     return {"state": render(req.state), "questions": qs}, meta
 

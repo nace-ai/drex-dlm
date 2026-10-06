@@ -65,7 +65,7 @@ class ContextOverflow(ValueError):
 
 
 def load_tokenizer(name, revision=None):
-    return AutoTokenizer.from_pretrained(name, revision=revision)
+    return AutoTokenizer.from_pretrained(name, revision=revision, trust_remote_code=False)
 
 
 def load_backbone(name, revision, dtype, attn):

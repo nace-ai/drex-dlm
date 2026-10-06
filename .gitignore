@@ -12,8 +12,6 @@ generation_config.json
 config.json
 configuration_edlm.py
 modeling_edlm.py
-OLLAMA.md
-Modelfile
 edlm_mask_test.py
 .hf_token
 .env

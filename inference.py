@@ -9,6 +9,7 @@ A state or question past the context limit returns an error, so the score covers
 """
 import argparse
 import json
+import math
 import sys
 import time
 from pathlib import Path
@@ -47,16 +48,29 @@ EXAMPLE = {
 }
 
 
+def _run_scorer(fn, *args):
+    try:
+        return fn(*args)
+    except ValueError as exc:
+        raise RuntimeError("model scoring failed") from exc
+
+
 def decide(tok, model, request):
-    rec, meta = to_record(SystemOneRequest(state=request["state"], questions=request["questions"]))
+    if not isinstance(request, dict) or "requests" in request:
+        raise ValueError("each decision must be an object with state and questions, without a requests wrapper")
+    rec, meta = to_record(SystemOneRequest.model_validate(request))
     enc = model.encode(tok, rec, max_state=SERVE_MAX_STATE, max_branch=SERVE_MAX_BRANCH, strict=True)
     started = time.perf_counter()
     with torch.no_grad():
-        probs = [p.float().tolist() for p in model.probs(enc)]
+        probs = [p.float().tolist() for p in _run_scorer(model.probs, enc)]
+    if len(probs) != len(meta) or any(len(row) != len(question["keys"]) or
+                                      any(not math.isfinite(value) for value in row)
+                                      for row, question in zip(probs, meta)):
+        raise RuntimeError("model readout is incomplete or non-finite")
     answers = to_answers(probs, meta)
     return {
         "answers": answers,
-        "usage": {"input_tokens": len(enc["ids"]), "output_tokens": output_tokens(tok, answers)},
+        "usage": {"input_tokens": len(enc["ids"]), "output_tokens": _run_scorer(output_tokens, tok, answers)},
         "latency_ms": round((time.perf_counter() - started) * 1000, 1),
     }
 
