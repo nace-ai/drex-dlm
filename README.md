@@ -271,7 +271,7 @@ For Ollama, set `PARAMETER num_ctx 32768` in `../drex-dlm-weights/Modelfile`, re
 
 ## Validation
 
-Python, native llama-server, and Ollama were tested on an Apple M5 Max with a 26-request, 53-question suite, including 50 independently labeled cases. All three runners returned the expected answers. The sample request and a 255-option request produced matching selections across the BF16 checkpoint and GGUF runners, with option probabilities within 0.01.
+The model was evaluated on Apple M5 hardware using the Python, native llama-server, and Ollama runners. Results were consistent across runners and matched expectations.
 
 The Q8_0 GGUF loads and serves requests through the native server at a 16,384-token context.
 
