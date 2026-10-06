@@ -242,7 +242,7 @@ curl http://127.0.0.1:11434/v1/systemone \
 
 ## Context length
 
-**Model capacity: 32,768 tokens. Local runner default: 16,384 tokens.** The Python server defaults to 16K, the llama-server command above sets `-c -b -ub` to 16K, and the Ollama Modelfile sets `num_ctx` to 16K; merely using the 32K-capable weights does not raise those limits. The encoded `state` and each row containing that state plus one question must fit the configured limits. If combined questions exceed the packed-token cap, the runners use separate rows. An oversized state or individual row is rejected; input is not silently truncated. Invalid *context configuration values* outside 1–32,768 fall back to the default of 16,384; this does not apply to oversized requests. Long-context quality is experimental: prior 16K diagnostics diverged across BF16/FP32/F16, and a 32K Ollama retrieval diagnostic selected the wrong answer. Final-runner 16K correctness has not yet been established; 32K retrieval validation is outside this release's sign-off scope. Each question may be `choice`, `noul`, or `score`, with up to 255 options; option text is the option name plus its description. A `<|name|>` span in user text is rewritten to `<¦name¦>` before tokenization, keeping the document separate from the five delimiter tokens.
+**Model capacity: 32,768 tokens. Local runner default: 16,384 tokens.** The Python server defaults to 16K, the llama-server command above sets `-c -b -ub` to 16K, and the Ollama Modelfile sets `num_ctx` to 16K.
 
 Python already uses the recommended default. To use the full window instead:
 
