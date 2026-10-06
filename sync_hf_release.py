@@ -16,7 +16,6 @@ REPO_ID = "nace-ai/drex-dlm"
 FILES = (
     "README.md",
     "MODEL_LICENSE.md",
-    "OLLAMA.md",
     "Modelfile",
     "LICENSE",
     "requirements.txt",
