@@ -20,7 +20,9 @@ A shared pointer head projects the final-layer hidden state at the decision mark
 
 The diagram uses `<decide>` and `</opt>` as readable aliases for the decision and option-ending markers. Packed requests within the token budget use one forward pass; larger requests are split across question rows.
 
-Weights: [nace-ai/drex-dlm](https://huggingface.co/nace-ai/drex-dlm)
+BF16 checkpoint: [nace-ai/drex-dlm](https://huggingface.co/nace-ai/drex-dlm)
+
+Q8_0 GGUF: [nace-ai/drex-dlm-Q8_0](https://huggingface.co/nace-ai/drex-dlm-Q8_0) (private; requires Hub authentication)
 
 Code: [nace-ai/drex-dlm](https://github.com/nace-ai/drex-dlm)
 
@@ -148,6 +150,8 @@ A local bfloat16 run of `examples/request.json` returns:
 | llama-server | `drex-dlm-f16.gguf` | `POST /v1/systemone`, port 8097 |
 | Ollama | the same GGUF | `POST /v1/systemone`, port 11434 |
 
+A separate [Q8_0 GGUF repository](https://huggingface.co/nace-ai/drex-dlm-Q8_0) provides a smaller native-server alternative. Its pointer-head matrices remain F16 to support inference. Download it to the sibling weights directory and replace the F16 GGUF path in the native-server command below with its path; use the custom `edlm` fork and the same Apple Silicon Metal setting. The Q8 model completes the tested 16K requests but misses the first-third retrieval fixture, just as F16 does; see the Q8 model card for the test and memory-savings limits. It has not been validated with Ollama.
+
 When combined questions exceed the packed-token cap, the runners can score separate question rows, provided the state plus each question fits the configured row limit. Floating-point probabilities can differ slightly between packed and row execution. Native context, batch, and microbatch capacities must each fit an encoded span. See [Context length](#context-length) for details.
 
 ### Python
@@ -267,7 +271,7 @@ For Ollama, set `PARAMETER num_ctx 32768` in `../drex-dlm-weights/Modelfile`, re
 
 ## Validation scope
 
-An October 2026 Apple M5 Max smoke suite of 26 requests and 53 questions (50 independently labeled) was answered correctly by Python, the original native fork, and the original Ollama fork. That synthetic suite does not reproduce Decision Index 0.2, demonstrate calibration or broad quality, or establish equivalence to hosted Drex. The published native fork already widens Metal matrix batch offsets; proposed row-offset casts are not a release gate. A later local 15,644-token singleton retrieval check failed on the first-position marker in native and Ollama and crashed the Python BF16 server; see `validation/RESULTS.md`. The older local GGUF used in that check embeds `general.license = mit`; it is **not distributed in this GitHub or Hugging Face release**. Convert afresh from the updated Hub model card and verify `general.license = cc-by-nc-4.0` before distributing any GGUF. Model weights remain CC BY-NC 4.0. Final-runner 16K sign-off remains open; multi-decision batching is outside this release's scope. Latency depends on the hardware, context, dtype, workload, and concurrency; no universal latency or sustained serving rate is claimed.
+An October 2026 Apple M5 Max smoke suite of 26 requests and 53 questions (50 independently labeled) was answered correctly by Python, the original native fork, and the original Ollama fork. That synthetic suite does not reproduce Decision Index 0.2, demonstrate calibration or broad quality, or establish equivalence to hosted Drex. The published native fork already widens Metal matrix batch offsets; proposed row-offset casts are not a release gate. A later local 15,644-token singleton retrieval check failed on the first-position marker in native and Ollama and crashed the Python BF16 server; see `validation/RESULTS.md`. The older GGUF used in that check had an incorrect embedded `general.license = mit` label and is not distributed here. The separately published [Q8_0 GGUF](https://huggingface.co/nace-ai/drex-dlm-Q8_0) embeds `general.license = cc-by-nc-4.0`; its long-context retrieval result still does not establish 16K quality. If converting other GGUFs, verify their embedded CC BY-NC 4.0 metadata before distributing them. Model weights remain CC BY-NC 4.0. Final-runner 16K sign-off remains open; multi-decision batching is outside this release's scope. Latency depends on the hardware, context, dtype, workload, and concurrency; no universal latency or sustained serving rate is claimed.
 
 ## Files
 
