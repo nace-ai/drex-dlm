@@ -1,44 +1,26 @@
----
-license: cc-by-nc-4.0
-base_model: nvidia/Efficient-DLM-8B
-tags:
-  - decision-model
-  - system-one
-library_name: transformers
-pipeline_tag: text-classification
----
-
 # Drex DLM
 
-We introduce Drex DLM from [Nace.AI](https://www.nace.ai/), a decision model that answers typed questions about a given context. Pass that context as `state`, provide one or more named questions, and get a probability for every option. One forward pass of an 8B diffusion language model plus a pointer head produces that distribution.
+Drex DLM is a decision model from [Nace.AI](https://www.nace.ai/). Give it a document and a set of questions (yes/no, multiple choice, or a rating scale) and it returns a probability for every answer in a single forward pass. It is built on NVIDIA's [Efficient-DLM-8B](https://huggingface.co/nvidia/Efficient-DLM-8B) diffusion language model plus a small pointer head, and it serves the same `POST /v1/systemone` API as the hosted [Drex API](https://drex.nace.ai/docs), so you can run it yourself.
 
-The backbone is [NVIDIA Efficient-DLM-8B](https://huggingface.co/nvidia/Efficient-DLM-8B), a diffusion language model with a decision adapter merged into its weights. The block tensor names match Qwen3. The shared context (`state`) uses bidirectional attention. Each question branch attends to that context and uses causal attention within the branch; state tokens cannot attend to questions, and question branches cannot attend to one another.
+[BF16 weights](https://huggingface.co/nace-ai/drex-dlm) · [Q8_0 GGUF](https://huggingface.co/nace-ai/drex-dlm-Q8_0) · [llama.cpp fork](https://github.com/nace-ai/llama.cpp) (branch `edlm`) · [Ollama fork](https://github.com/nace-ai/ollama) (branch `nace-edlm`) · [Agent skill](https://github.com/nace-ai/drex-agent-skill)
 
-A shared pointer head projects the final-layer hidden state at the decision marker into a query and the final-layer hidden state at each option-ending marker into a key. Scaled dot products, temperature scaling, and a softmax over each question's options produce the probabilities.
+**Tested on** Apple M5 Max (128 GiB), Apple M5 Pro (48 GiB) and NVIDIA H100 80 GB SXM (CUDA). CPU-only inference has not been tested. Python 3.12 is the validated interpreter. The BF16 weights take about 16 GB; memory use grows with context length and batch size.
 
-![Drex DLM architecture: packed context and questions pass through the Efficient-DLM-8B diffusion backbone. Final hidden states are grouped by question. A shared pointer readout projects option-ending states into keys and decision states into queries, then scores and normalizes each question's options into probabilities.](assets/drex-dlm-architecture.png)
+## How it works
 
-The diagram uses `<decide>` and `</opt>` as readable aliases for the decision and option-ending markers. Packed requests within the token budget use one forward pass; larger requests are split across question rows.
+The shared context (`state`) uses bidirectional attention. Each question branch attends to the context and uses causal attention within itself; state tokens cannot attend to questions, and branches cannot attend to each other. A shared pointer head projects the final-layer state at the decision marker into a query and the state at each option-ending marker into a key. Scaled dot products, temperature scaling and a softmax over each question's options give the probabilities.
 
-BF16 checkpoint: [nace-ai/drex-dlm](https://huggingface.co/nace-ai/drex-dlm)
+![Drex DLM architecture](assets/drex-dlm-architecture.png)
 
-Q8_0 GGUF: [nace-ai/drex-dlm-Q8_0](https://huggingface.co/nace-ai/drex-dlm-Q8_0)
+<sub>The diagram uses `<decide>` and `</opt>` as readable aliases for the decision and option-ending markers.</sub>
 
-Code: [nace-ai/drex-dlm](https://github.com/nace-ai/drex-dlm)
+Requests within the packed-token budget run in one forward pass; larger ones are split across question rows.
 
-Server: [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp), branch `edlm`
+Drex DLM follows the System One request format used by Jev and by [Kev](https://github.com/jaredpalmer/kev), an open-source family of Jev-style models. SDKs and servers written for that format work unchanged, and the `KEV_*` environment variables in `serve.py` come from Kev's server code.
 
-The model supports a maximum context window of **32,768 tokens**, but the local Python, llama-server, and Ollama runners use **16,384 tokens by default**. The 32K window is not enabled automatically; [Context length](#context-length) explains how to configure it for each runner.
+## Performance
 
-Python 3.12 is the validated interpreter. Local inference was tested on an Apple M5 Max with 128 GiB of unified memory; CUDA and CPU-only inference have not yet been validated. BF16 weights occupy about 16 GB, but actual memory use grows with context length and batching.
-
-## Agentic harnesses
-
-Integrate Drex DLM into coding agents and other agentic harnesses with the [Drex agent skill](https://github.com/nace-ai/drex-agent-skill). Its [self-hosted instructions](https://github.com/nace-ai/drex-agent-skill#self-hosted-drex) show how to point your agent at this model's local `/v1/systemone` server (see [Serving](#serving)); no hosted API key is needed.
-
-## Decision Index 0.2
-
-Scores reported as of October 2026.
+Drex DLM scores 52.31 on the [Decision Index 0.2](https://huggingface.co/spaces/multimodalart/jev-decision-index) leaderboard, ahead of the next five entries as of October 2026:
 
 | Model | Index | Knowledge & Reasoning | Language Understanding | Retrieval & Classification | Tools & Automation | Arts & Human Taste |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -48,8 +30,6 @@ Scores reported as of October 2026.
 | AutoJev-27B | 50.94 | 40.93 | 61.90 | 42.00 | 69.98 | 39.88 |
 | Jebadiah 27B | 50.32 | 38.82 | 58.97 | 45.48 | 69.30 | 39.02 |
 | simple-jev · Qwen3.8-27B | 50.21 | 36.61 | 60.16 | 50.22 | 66.95 | 37.10 |
-
-The other five are the top of the [Decision Index 0.2](https://huggingface.co/spaces/multimodalart/jev-decision-index) board.
 
 ## Quick start
 
@@ -63,7 +43,7 @@ hf download nace-ai/drex-dlm --local-dir ../drex-dlm-weights
 python inference.py --model ../drex-dlm-weights --request examples/request.json
 ```
 
-The checkpoint lives in a sibling directory so its code cannot overwrite the GitHub checkout. The `hf` command requires `huggingface_hub>=0.34`, installed by `requirements.txt` ([CLI rename in v0.34.0](https://github.com/huggingface/huggingface_hub/releases/tag/v0.34.0)). The inference command prints answers for the sample ticket. To run the inference server instead:
+Weights go in a sibling directory. The last command prints answers for the sample ticket. To run the server instead:
 
 ```bash
 python serve.py --model ../drex-dlm-weights --port 8000
@@ -72,11 +52,21 @@ curl http://127.0.0.1:8000/v1/systemone \
   -d @examples/request.json
 ```
 
-`GET /health` returns `{"status": "ok"}` once the weights are loaded. The same request also runs through `llama-server` and Ollama (see [Serving](#serving)). `python onboard.py` prints commands using the downloaded sibling `../drex-dlm-weights` when present; use `python onboard.py --weights /path/to/checkpoint` for another location. The helper puts its generated Modelfile beside the GGUF, not in the GitHub checkout, and does not replace an existing one; it rejects linked Modelfiles rather than following them. Set `OLLAMA_SOURCE=/path/to/nace-edlm-checkout` if the Ollama fork is not at the default sibling `../ollama`; the printed create command uses that checkout's executable.
+`GET /health` returns `{"status": "ok"}` once the weights are loaded.
+
+`python onboard.py` prints the setup commands for every runner, using `../drex-dlm-weights` if present (`--weights /path/to/checkpoint` for elsewhere). Set `OLLAMA_SOURCE=/path/to/nace-edlm-checkout` if the Ollama fork isn't at `../ollama`.
+
+The commands below assume this layout:
+
+```text
+parent/
+  drex-dlm/            this repository
+  drex-dlm-weights/    checkpoint, GGUF, Modelfile
+  llama.cpp/           nace-ai/llama.cpp, branch edlm
+  ollama/              nace-ai/ollama, branch nace-edlm
+```
 
 ## Request format
-
-Two fields matter:
 
 | Field | What to put there |
 |---|---|
@@ -113,13 +103,13 @@ Two fields matter:
 
 | Type | You supply | You get back |
 |---|---|---|
-| `choice` | Named options, each with a short description. Object key order is option order. | `choice`, a probability per name, and `confidence` |
-| `noul` | A yes-or-no question, with optional `criteria.true` / `criteria.false` descriptions. | `noul`, the probability of "yes," from 0 to 1 |
-| `score` | An ordered scale, lowest first. | A probability-weighted `score`, plus `legend`, per-level `probabilities`, and `confidence` |
+| `choice` | Named options with short descriptions. Key order is option order. | `choice`, a probability per option, and `confidence` |
+| `noul` | A yes/no question, with optional `criteria.true` / `criteria.false`. | `noul`, the probability of "yes" (0 to 1) |
+| `score` | An ordered scale, lowest first. | A probability-weighted `score`, plus `legend`, per-level `probabilities` and `confidence` |
 
-`choice.confidence` rescales the winning probability above a uniform baseline. `score.confidence` measures concentration near the modal level; neither is a calibrated probability of correctness. The local score-confidence formula approximates the hosted API's statistic.
+For `choice`, `confidence` rescales the winning probability above a uniform baseline; for `score`, it measures concentration around the modal level. The local `score` formula approximates the hosted API's.
 
-A local bfloat16 run of `examples/request.json` returns:
+Response from a local bfloat16 run of `examples/request.json`:
 
 ```json
 {
@@ -142,21 +132,19 @@ A local bfloat16 run of `examples/request.json` returns:
 }
 ```
 
-`usage.input_tokens` is the encoded document plus questions (87 for this ticket). `usage.output_tokens` counts the serialized answers, not generated text. `latency_ms` is the scoring time.
-
-**One decision per request is the release contract.** Experimental multi-decision `requests` work remains in a separate local development checkout and is not part of this release. Published Python, native, and Ollama builds do not support that wrapper; make separate calls on all three runners.
+`usage.input_tokens` is the encoded document plus questions (87 here). `usage.output_tokens` counts the serialized answers, not generated text. `latency_ms` is the scoring time.
 
 ## Serving
 
-| Runner | Weights | Listens on |
+| Runner | Weights | Endpoint |
 |---|---|---|
-| Python | `drex-dlm-weights`, including `head.pt` | `POST /v1/systemone`, port 8000 |
+| Python | `drex-dlm-weights` (includes `head.pt`) | `POST /v1/systemone`, port 8000 |
 | llama-server | `drex-dlm-f16.gguf` | `POST /v1/systemone`, port 8097 |
 | Ollama | the same GGUF | `POST /v1/systemone`, port 11434 |
 
-A separate [Q8_0 GGUF repository](https://huggingface.co/nace-ai/drex-dlm-Q8_0) provides a smaller native-server alternative. Its pointer-head matrices remain F16 to support inference. Download it to the sibling weights directory and replace the F16 GGUF path in the native-server command below with its path; use the custom `edlm` fork and the same Apple Silicon Metal setting. The [Q8 model card](https://huggingface.co/nace-ai/drex-dlm-Q8_0) provides artifact details and the tested native configuration. Q8 use with Ollama has not been validated.
+The [Q8_0 GGUF](https://huggingface.co/nace-ai/drex-dlm-Q8_0) is a smaller option for llama-server (pointer-head matrices stay F16). Download it into the weights directory and swap its path into the command below; its model card has the tested configuration.
 
-When combined questions exceed the packed-token cap, the runners can score separate question rows, provided the state plus each question fits the configured row limit. Floating-point probabilities can differ slightly between packed and row execution. Native context, batch, and microbatch capacities must each fit an encoded span. See [Context length](#context-length) for details.
+If the combined questions exceed the packed-token cap, the runners score question rows separately as long as the state plus each question fits the row limit.
 
 ### Python
 
@@ -165,11 +153,11 @@ source .venv/bin/activate
 python serve.py --model ../drex-dlm-weights --host 127.0.0.1 --port 8000
 ```
 
-The server loads the safetensors shards and `head.pt` from `--model`; `--name` sets the fallback response model name. Run it from `drex-dlm` after the quick start.
+`--model` is the directory holding the safetensors shards and `head.pt`; `--name` sets the fallback model name in responses.
 
 ### llama-server
 
-The `edlm` architecture, its converter, and `POST /v1/systemone` live on branch `edlm` of [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp). From `drex-dlm`, clone a sibling checkout and build the server (CMake and a C/C++ toolchain required; Apple Silicon also needs the Xcode Metal toolchain):
+The `edlm` architecture, GGUF converter and `/v1/systemone` endpoint live on branch `edlm` of [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp). The fork adds the Efficient-DLM architecture and the Kev pointer head to llama.cpp. You need CMake and a C/C++ toolchain (Xcode Metal toolchain on Apple Silicon). From `drex-dlm`:
 
 ```bash
 cd ..
@@ -178,7 +166,7 @@ cmake -S llama.cpp -B llama.cpp/build
 cmake --build llama.cpp/build --target llama-server --parallel 8
 ```
 
-For NVIDIA, add `-DGGML_CUDA=ON` when configuring; CUDA has not been validated for this release. Use a separate conversion environment because converter dependencies differ from the inference requirements:
+On NVIDIA, add `-DGGML_CUDA=ON` when configuring. Convert the weights to GGUF:
 
 ```bash
 python3.12 -m venv llama.cpp/.venv-convert
@@ -189,7 +177,7 @@ llama.cpp/.venv-convert/bin/python llama.cpp/convert_hf_to_gguf.py drex-dlm-weig
 cd drex-dlm
 ```
 
-From `drex-dlm`, start the server, then send the sample from another terminal:
+Start the server from `drex-dlm`:
 
 ```bash
 GGML_METAL_TENSOR_DISABLE=1 ../llama.cpp/build/bin/llama-server \
@@ -199,16 +187,18 @@ GGML_METAL_TENSOR_DISABLE=1 ../llama.cpp/build/bin/llama-server \
   -c 16384 -b 16384 -ub 16384 -np 1 --no-warmup
 ```
 
+Then, from another terminal:
+
 ```bash
 curl http://127.0.0.1:8097/v1/systemone \
   -H 'Content-Type: application/json' -d @examples/request.json
 ```
 
-Keep `GGML_METAL_TENSOR_DISABLE=1` on Apple Silicon: the Metal tensor matmul path produced incorrect long-input results in validation. If an encoded span exceeds the native `-c`, `-b`, or `-ub` capacity, it is rejected; the server does not adjust rows to smaller launch capacities. The response includes Python's `answers` schema plus `latency_ms` and an `x-typesafe-request-id` header.
+Keep `GGML_METAL_TENSOR_DISABLE=1` on Apple Silicon: the Metal tensor matmul path gave incorrect results on long inputs. The flag is not needed on CUDA. Responses use the same `answers` schema as the Python server, plus `latency_ms` and an `x-typesafe-request-id` header.
 
 ### Ollama
 
-[nace-ai/ollama](https://github.com/nace-ai/ollama) branch `nace-edlm` launches a custom `llama-server` and forwards `POST /v1/systemone`. Complete the native checkout and conversion above first. From `drex-dlm`, clone a sibling checkout and build the Apple Silicon runner and Go daemon (Go 1.26 with automatic toolchain download):
+[nace-ai/ollama](https://github.com/nace-ai/ollama), branch `nace-edlm`, launches a custom `llama-server` and forwards `POST /v1/systemone`. The fork adds System One inference support to Ollama. Finish the llama-server build and conversion above first. From `drex-dlm`, build the runner and daemon (Go 1.26; the toolchain downloads automatically):
 
 ```bash
 cd ..
@@ -221,7 +211,7 @@ GOTOOLCHAIN=auto go build -trimpath -o ollama .
 cd ../drex-dlm
 ```
 
-The Linux CUDA and CPU presets have not been validated for this release. Build from the matching native fork, not the stock Ollama binary. Write a Modelfile next to the converted GGUF:
+The `darwin` preset is for Apple Silicon. Write a Modelfile next to the GGUF:
 
 ```bash
 cat > ../drex-dlm-weights/Modelfile <<'EOF'
@@ -231,13 +221,15 @@ PARAMETER num_ctx 16384
 EOF
 ```
 
-Start the daemon from `drex-dlm` (leave it running) and, in another terminal, import and call the model:
+Start the daemon and leave it running:
 
 ```bash
 OLLAMA_HOST=127.0.0.1:11434 \
 OLLAMA_LLAMA_SERVER="$PWD/../ollama/build/llama-server-darwin/bin/llama-server" \
   ../ollama/ollama serve
 ```
+
+In another terminal:
 
 ```bash
 OLLAMA_HOST=127.0.0.1:11434 ../ollama/ollama create drex-dlm \
@@ -246,19 +238,19 @@ curl http://127.0.0.1:11434/v1/systemone \
   -H 'Content-Type: application/json' -d @examples/request.json
 ```
 
-`GET /api/version` checks readiness. Current fork builds align native context, batch, and microbatch capacities; on macOS, the Ollama fork disables the problematic Metal tensor path for eDLM child runners.
+`GET /api/version` checks readiness. The fork keeps native context, batch and microbatch capacities aligned and, on macOS, disables the Metal tensor path for eDLM runners.
 
 ## Context length
 
-**Model capacity: 32,768 tokens. Local runner default: 16,384 tokens.** The Python server defaults to 16K, the llama-server command above sets `-c -b -ub` to 16K, and the Ollama Modelfile sets `num_ctx` to 16K.
+The model supports up to **32,768 tokens**. Every runner defaults to **16,384**; the full window must be enabled explicitly.
 
-Python already uses the recommended default. To use the full window instead:
+**Python:**
 
 ```bash
 KEV_CONTEXT=32768 python serve.py --model ../drex-dlm-weights --port 8000
 ```
 
-For llama-server, the encode cap and the slot size must move together — rebuild from the `edlm` branch after pulling this change, then:
+**llama-server.** Raise the encode cap (`SYSTEMONE_CONTEXT`) and the slot size (`-c`, `-b`, `-ub`) together:
 
 ```bash
 GGML_METAL_TENSOR_DISABLE=1 SYSTEMONE_CONTEXT=32768 ../llama.cpp/build/bin/llama-server \
@@ -269,26 +261,29 @@ GGML_METAL_TENSOR_DISABLE=1 SYSTEMONE_CONTEXT=32768 ../llama.cpp/build/bin/llama
   --no-warmup
 ```
 
-For Ollama, set `PARAMETER num_ctx 32768` in `../drex-dlm-weights/Modelfile`, repeat the fork's `ollama create` command, and restart its daemon with `SYSTEMONE_CONTEXT=32768`. `num_ctx` sizes the slot (the patched fork also sizes its decision batch and microbatch); the environment variable raises the encode cap. Keep them aligned. A successful 32K capacity check is not a correctness guarantee.
+**Ollama.** Set `PARAMETER num_ctx 32768` in the Modelfile, re-run `ollama create`, and restart the daemon with `SYSTEMONE_CONTEXT=32768`. `num_ctx` sizes the slot, decision batch and microbatch; `SYSTEMONE_CONTEXT` raises the encode cap. Keep them aligned.
 
-`KEV_SERVE_MAX_STATE`, `KEV_SERVE_MAX_BRANCH`, and `KEV_SERVE_MAX_PACKED` (Python), and their `SYSTEMONE_*` equivalents (llama-server), override individual caps if you need finer control — none of them are required to select the full window.
+`KEV_SERVE_MAX_STATE`, `KEV_SERVE_MAX_BRANCH` and `KEV_SERVE_MAX_PACKED` (Python), and the matching `SYSTEMONE_*` variables (llama-server), override individual caps. None are needed to use the full window.
 
 ## Validation
 
-The model was evaluated on Apple M5 hardware using the Python, native llama-server, and Ollama runners. Results were consistent across runners and matched expectations.
-
-The Q8_0 GGUF loads and serves requests through the native server at a 16,384-token context.
+Results were checked across the Python, llama-server and Ollama runners on Apple M5 Max and M5 Pro, and across Python and llama-server on CUDA. The Q8_0 GGUF loads and serves requests through llama-server at a 16,384-token context.
 
 ## Files
 
-| File | Role |
+| File | Purpose |
 |---|---|
-| `model-*-of-00004.safetensors` | Merged backbone, bfloat16, ~16 GB |
-| `head.pt` | Pointer head: 256-dim query/key, temperature 1.0 |
-| `inference.py` | Score one JSON file and print the answers |
-| `serve.py` | `POST /v1/systemone` |
+| `inference.py` | Score one JSON request file and print the answers |
+| `serve.py` | Python server for `POST /v1/systemone` |
+| `onboard.py` | Prints setup commands for the local runners |
 | `examples/request.json` | The ticket used in the sample response |
+
+The weights (`model-*-of-00004.safetensors`, about 16 GB in bfloat16, and `head.pt`, the 256-dim pointer head with temperature 1.0) are hosted on [Hugging Face](https://huggingface.co/nace-ai/drex-dlm), not in this repository.
+
+## Integrations
+
+The [Drex agent skill](https://github.com/nace-ai/drex-agent-skill) connects coding agents and other agentic harnesses to Drex. Its [self-hosted instructions](https://github.com/nace-ai/drex-agent-skill#self-hosted-drex) point an agent at a local `/v1/systemone` server; no API key is needed.
 
 ## License
 
-The model weights are released under CC BY-NC 4.0. The original code written by Nace.AI in this repository is under the MIT License.
+Model weights: CC BY-NC 4.0. Code in this repository: MIT.
