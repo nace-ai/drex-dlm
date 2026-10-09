@@ -157,7 +157,7 @@ python serve.py --model ../drex-dlm-weights --host 127.0.0.1 --port 8000
 
 ### llama-server
 
-The `edlm` architecture, GGUF converter and `/v1/systemone` endpoint live on branch `edlm` of [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp). The fork add Efficient-DLM architecture and Kev head to llama.cpp. You need CMake and a C/C++ toolchain (Xcode Metal toolchain on Apple Silicon). From `drex-dlm`:
+The `edlm` architecture, GGUF converter and `/v1/systemone` endpoint live on branch `edlm` of [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp). The fork adds the Efficient-DLM architecture and the Kev pointer head to llama.cpp. You need CMake and a C/C++ toolchain (Xcode Metal toolchain on Apple Silicon). From `drex-dlm`:
 
 ```bash
 cd ..
@@ -198,7 +198,7 @@ Keep `GGML_METAL_TENSOR_DISABLE=1` on Apple Silicon: the Metal tensor matmul pat
 
 ### Ollama
 
-[nace-ai/ollama](https://github.com/nace-ai/ollama), branch `nace-edlm`, launches a custom `llama-server` and forwards `POST /v1/systemone`. The fork add support for proper systemone inferencing from llama.cpp. Finish the llama-server build and conversion above first. From `drex-dlm`, build the runner and daemon (Go 1.26; the toolchain downloads automatically):
+[nace-ai/ollama](https://github.com/nace-ai/ollama), branch `nace-edlm`, launches a custom `llama-server` and forwards `POST /v1/systemone`. The fork adds System One inference support to Ollama. Finish the llama-server build and conversion above first. From `drex-dlm`, build the runner and daemon (Go 1.26; the toolchain downloads automatically):
 
 ```bash
 cd ..
